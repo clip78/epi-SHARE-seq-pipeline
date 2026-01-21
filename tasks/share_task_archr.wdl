@@ -37,7 +37,8 @@ task archr {
         String heatmap_transpose = "TRUE"
         Int heatmap_label_n = 5
 
-        String heatmap_cutoff = "'FDR <= 0.01 & Log2FC >= 0.5'" # Fix - use two float as parameters and create the string inside the task
+        Float heatmap_fdr_cutoff = 0.01
+        Float heatmap_log2fc_cutoff = 0.5
 
         #papermill specific parameters
         String papermill = "TRUE"
@@ -61,6 +62,8 @@ task archr {
 
     # Determining disk type base on the size of disk.
     String disk_type = if disk_gb > 375 then "SSD" else "LOCAL"
+
+    String heatmap_cutoff = "'FDR <= ~{heatmap_fdr_cutoff} & Log2FC >= ~{heatmap_log2fc_cutoff}'"
 
     #Plot filepaths
     String plots_filepath = '${prefix}.atac.archr.plots.${genome}'
@@ -264,10 +267,16 @@ task archr {
             example: 5
         }
 
-        heatmap_cutoff: {
-            description: 'Cut-off applied to genes in heatmap',
-            help: 'Cut-off has to be specified in string format',
-            example: 'FDR <= 0.01 & Log2FC >= 0.5'
+        heatmap_fdr_cutoff: {
+            description: 'Cut-off for FDR in heatmap',
+            help: 'Genes with an FDR less than or equal to this value will be included in the heatmap.',
+            example: 0.01
+        },
+
+        heatmap_log2fc_cutoff: {
+            description: 'Cut-off for Log2FC in heatmap',
+            help: 'Genes with a Log2FC greater than or equal to this value will be included in the heatmap.',
+            example: 0.5
         }
     }
 }
