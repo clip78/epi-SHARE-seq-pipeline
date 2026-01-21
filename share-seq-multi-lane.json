@@ -1,0 +1,21 @@
+{
+  "share.chemistry": "shareseq",
+  "share.pipeline_modality": "full",
+  "share.genome_tsv": "gs://broad-buenrostro-pipeline-genome-annotations/IGVF_human/GRCh38_genome_files_hg38.tsv",
+  "share.read1_rna": [
+    "/path/to/share-rna.R1.L1.fq.gz",
+    "/path/to/share-rna.R1.L2.fq.gz"
+  ],
+  "share.read2_rna": [
+    "/path/to/share-rna.R2.L1.fq.gz",
+    "/path/to/share-rna.R2.L2.fq.gz"
+  ],
+  "share.read1_atac": [
+    "/path/to/share-atac.R1.L1.fq.gz",
+    "/path/to/share-atac.R1.L2.fq.gz"
+  ],
+  "share.read2_atac": [
+    "/path/to/share-atac.R2.L1.fq.gz",
+    "/path/to/share-atac.R2.L2.fq.gz"
+  ]
+}
