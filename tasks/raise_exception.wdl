@@ -1,3 +1,5 @@
+version 1.0
+
 # From https://github.com/ENCODE-DCC/chip-seq-pipeline2/blob/master/chip.wdl
 
 
