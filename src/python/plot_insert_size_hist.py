@@ -19,20 +19,9 @@ def parse_arguments():
 
 def get_hist_vals(histogram_file):
     """Get dataframe of histogram values"""
-    with open(histogram_file, "r") as f:
-        begin_vals = False
-        insert_size = []
-        count = []
-        for line in f:
-            vals = line.rstrip().split(sep="\t")
-            if begin_vals and len(vals) == 2: # last line is blank
-                insert_size.append(int(vals[0]))
-                count.append(int(vals[1]))
-            elif vals[0] == "insert_size": # desired values occur after line beginning with "insert_size"
-                begin_vals = True
-            
-    df = pd.DataFrame(list(zip(insert_size, count)), columns=["insert_size","count"])
-    
+    df = pd.read_csv(histogram_file, sep="\t", comment="#")
+    df = df.rename(columns={df.columns[1]: "count"})
+    df = df[["insert_size", "count"]]
     return(df)
 
 def label_func(breaks):
