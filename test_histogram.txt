@@ -1,0 +1,7 @@
+# A sample Picard CollectInsertSizeMetrics histogram file
+# This file is used for testing the plot_insert_size_hist.py script.
+
+insert_size	All_Reads.fr_count
+10	100
+20	200
+30	300
