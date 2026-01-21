@@ -8,6 +8,7 @@ import "workflows/subwf-rna-starsolo.wdl" as share_rna
 import "workflows/subwf-find-dorcs.wdl" as find_dorcs
 import "tasks/share_task_joint_qc.wdl" as joint_qc
 import "tasks/share_task_html_report.wdl" as html_report
+import "tasks/raise_exception.wdl" as raise_exception
 
 
 # WDL workflow for SHARE-seq
@@ -70,6 +71,13 @@ workflow share {
 
         File genome_tsv
         String? genome_name
+    }
+
+    if (chemistry != "shareseq" && chemistry != "10x_multiome" && chemistry != "10x_v2") {
+      call raise_exception.raise_exception {
+        input:
+          msg = "Chemistry '~{chemistry}' not supported. Please use 'shareseq', '10x_multiome' or '10x_v2'"
+      }
     }
 
     Map[String, File] annotations = read_map(genome_tsv)
