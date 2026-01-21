@@ -4,6 +4,8 @@ import gzip
 import heapq
 import sys
 from collections import Counter
+import tempfile
+import struct
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -65,30 +67,62 @@ def main(fragments, barcodes_strict, barcodes_expanded, summary, barcodes_status
 
     print_and_log("Identifying candidate barcodes", logout, starttime)
 
-    cur_clique = set()
+    # Use a temp file to store parsed cliques to avoid reading GZIP twice
+    # Mode w+b for read/write binary
+    cliques_file = tempfile.TemporaryFile(mode='w+b')
+
+    bc_to_id = {}
+    id_to_bc = []
+    barcode_counts = Counter()
+
+    cur_clique_ids = set()
     cur_coord = None
     i = 0
-    barcode_counts = Counter()
+
     with gzip.open(fragments, 'rt') as f:
         for line in f:
             line = line.rstrip('\n').split('\t')
             chr, start, end, barcode = line[:4]
 
+            bid = bc_to_id.get(barcode)
+            if bid is None:
+                bid = len(id_to_bc)
+                bc_to_id[barcode] = bid
+                id_to_bc.append(barcode)
+
             this_coord = (chr, start, end)
             if this_coord != cur_coord:
-                if len(cur_clique) <= max_beads_per_drop:
-                    for b in cur_clique:
-                        barcode_counts[b] += 1
+                if cur_coord is not None:
+                    # Write clique to temp file
+                    count = len(cur_clique_ids)
+                    if count > 0:
+                        cliques_file.write(struct.pack('I', count))
+                        cliques_file.write(struct.pack(f'{count}I', *cur_clique_ids))
 
-                cur_clique = set([barcode])
+                        if count <= max_beads_per_drop:
+                            for b in cur_clique_ids:
+                                barcode_counts[b] += 1
+
+                cur_clique_ids = {bid}
                 cur_coord = this_coord
 
             else:
-                cur_clique.add(barcode)
+                cur_clique_ids.add(bid)
 
             i += 1
             if i%1e7==0:
                 print(i)
+
+    # Process the last clique if exists
+    # Note: Original code might have missed the last clique, but we include it for correctness.
+    if cur_coord is not None and len(cur_clique_ids) > 0:
+        count = len(cur_clique_ids)
+        cliques_file.write(struct.pack('I', count))
+        cliques_file.write(struct.pack(f'{count}I', *cur_clique_ids))
+
+        if count <= max_beads_per_drop:
+            for b in cur_clique_ids:
+                barcode_counts[b] += 1
 
 
     print_and_log(
@@ -97,8 +131,8 @@ def main(fragments, barcodes_strict, barcodes_expanded, summary, barcodes_status
         starttime,
     )
 
-    barcodes_considered = set(k for k, v in barcode_counts.items() if v >= min_counts)
-    num_bc = len(barcodes_considered)
+    barcodes_considered_ids = set(k for k, v in barcode_counts.items() if v >= min_counts)
+    num_bc = len(barcodes_considered_ids)
 
     print_and_log(
         f"Identified {num_bc} total barcodes for multiplet detection",
@@ -109,33 +143,34 @@ def main(fragments, barcodes_strict, barcodes_expanded, summary, barcodes_status
     print_and_log("Reading fragments", logout, starttime)
 
     pair_counts = Counter()
-    cur_clique = set()
-    cur_coord = None
-    i = 0
-    with gzip.open(fragments, 'rt') as f:
-        for line in f:
-            line = line.rstrip('\n').split('\t')
-            chr, start, end, barcode = line[:4]
+    # Rewind temp file to read for second pass
+    cliques_file.seek(0)
 
-            if barcode not in barcodes_considered:
-                continue
+    # Read loop
+    while True:
+        # Read count (4 bytes)
+        data = cliques_file.read(4)
+        if not data:
+            break
+        count = struct.unpack('I', data)[0]
 
-            this_coord = (chr, start, end)
-            if this_coord != cur_coord:
-                if len(cur_clique) <= max_beads_per_drop:
-                    for x, y in itertools.combinations(cur_clique, 2):
-                        x, y = (x, y) if x < y else (y, x)
-                        pair_counts[(x, y)] += 1
+        # Read IDs
+        data = cliques_file.read(4 * count)
+        if len(data) < 4 * count:
+            break # Should not happen
+        clique_ids = struct.unpack(f'{count}I', data)
 
-                cur_clique = set([barcode])
-                cur_coord = this_coord
+        # Filter logic
+        # Reconstruct the filtered clique
+        filtered_clique = [x for x in clique_ids if x in barcodes_considered_ids]
 
-            else:
-                cur_clique.add(barcode)
+        if len(filtered_clique) > 0:
+            if len(filtered_clique) <= max_beads_per_drop:
+                for x, y in itertools.combinations(filtered_clique, 2):
+                    x, y = (x, y) if x < y else (y, x)
+                    pair_counts[(x, y)] += 1
 
-            i += 1
-            if i%1e7==0:
-                print(i)
+    cliques_file.close()
 
     print_and_log("Identifying barcode multiplets", logout, starttime)
 
@@ -154,7 +189,12 @@ def main(fragments, barcodes_strict, barcodes_expanded, summary, barcodes_status
         bca = barcode_counts[a]
         bcb = barcode_counts[b]
         jac = y/(bca + bcb - y)
-        data = [a, b, bca, bcb, y, jac, None]
+
+        # Use string barcodes for data
+        bc_a = id_to_bc[a]
+        bc_b = id_to_bc[b]
+
+        data = [bc_a, bc_b, bca, bcb, y, jac, None]
         expanded_data[x] = data
         if jac > 0:
             jac_dists_max[a] = max(jac_dists_max.get(a, 0), jac)
@@ -175,7 +215,6 @@ def main(fragments, barcodes_strict, barcodes_expanded, summary, barcodes_status
     with gzip.open(barcodes_expanded, 'wt') as f:
         f.write("Barcode1\tBarcode2\tBarcode1Counts\tBarcode2Counts\tCommon\tJaccardIndex\n")
         for x, data in expanded_data.items():
-            a, b = x
             f.write("{}\t{}\t{}\t{}\t{}\t{:.4f}\n".format(*data[:-1]))
 
     jac_dists_ref_filt = {}
@@ -245,18 +284,25 @@ def main(fragments, barcodes_strict, barcodes_expanded, summary, barcodes_status
                 blacklist.add(a)
             if b != pb:
                 blacklist.add(b)
-            data[-1] = pb
+
+            # Map pb back to string
+            pb_str = id_to_bc[pb]
+            data[-1] = pb_str
             f.write("{}\t{}\t{}\t{}\t{}\t{:.4f}\t{}\n".format(*data))
 
     with open(barcodes_status, 'w') as f:
         f.write("Barcode\tIsMultiplet\tPrimaryBarcode\n")
-        for b in barcode_counts.keys():
-            if b not in barcodes_considered:
-                f.write(f"{b}\tIndeterminate\tNone\n")
-            elif b in multiplet_data:
-                f.write(f"{b}\tTrue\t{primary_bc_map[b]}\n")
+        for bid in barcode_counts.keys():
+            b_str = id_to_bc[bid]
+
+            if bid not in barcodes_considered_ids:
+                f.write(f"{b_str}\tIndeterminate\tNone\n")
+            elif bid in multiplet_data:
+                # Note: This reproduces the original behavior where single barcodes are checked against pair keys
+                pb_str = id_to_bc[primary_bc_map[bid]]
+                f.write(f"{b_str}\tTrue\t{pb_str}\n")
             else:
-                f.write(f"{b}\tFalse\tNone\n")
+                f.write(f"{b_str}\tFalse\tNone\n")
 
     print_and_log(
         f"Identified {len(multiplet_data)} barcode pairs above Jaccard threshold",
