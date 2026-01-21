@@ -19,17 +19,13 @@ def parse_arguments():
     return parser.parse_args()
 
 # DNA base complements
-COMPLEMENT = {'A': 'T',
-              'T': 'A',
-              'C': 'G',
-              'G': 'C',
-              'N': 'N'}
+TRANS_TABLE = str.maketrans("ATCGN", "TAGCN")
 
 def reverse_complement(sequence):
     """
     Return reverse complement of DNA sequence.
     """
-    return ''.join(COMPLEMENT[b] for b in sequence[::-1])
+    return sequence.translate(TRANS_TABLE)[::-1]
 
 def write_read(fastq, read):
     """
