@@ -32,8 +32,17 @@ def filter_mito(in_path, out_path, barcode_tag, cutoff, prefix, threads=1):
     # Initializing the dictionary setting the counts for non-mito and mito.
     barcode_metrics = defaultdict(lambda: [0,0])
 
-    for read in infile.fetch(until_eof=True,multiple_iterators=True):
-        if read.reference_name == "chrM":
+    # Get reference ID for chrM to allow faster integer comparison
+    try:
+        chrM_tid = infile.get_tid("chrM")
+    except ValueError:
+        # chrM not found in header
+        chrM_tid = -1
+
+    # Pass 1: Iterate through the file to calculate metrics
+    for read in infile:
+        # Use reference_id comparison (faster than string comparison)
+        if read.reference_id == chrM_tid:
             if read.flag & 260 == 0: # Alignment is mapped and is primary
                 number_mito += 1
                 barcode_metrics[read.get_tag(barcode_tag)][1] += 1
@@ -42,7 +51,9 @@ def filter_mito(in_path, out_path, barcode_tag, cutoff, prefix, threads=1):
             if read.flag & 260 == 0:
                 number_non_mito += 1
                 barcode_metrics[read.get_tag(barcode_tag)][0] += 1
-            #outfile.write(read)
+
+    # Reset file pointer to the beginning for the second pass
+    infile.reset()
 
     # Write the summary metrics
     with open(outfile_bulk_metrics, "w") as fh:
@@ -56,10 +67,17 @@ def filter_mito(in_path, out_path, barcode_tag, cutoff, prefix, threads=1):
         for barcode,counts in barcode_metrics.items():
             print(f"{barcode}\t{counts[0]}\t{counts[1]}", file = fh)
 
-    # Write a filtered bam
+    # Pre-calculate valid barcodes to optimize lookup in the second pass
+    cutoff_val = cutoff * 2
+    valid_barcodes = {b for b, c in barcode_metrics.items() if c[0] > cutoff_val}
+
+    # Pass 2: Write a filtered bam
     for read in infile:
-        if read.flag & 260 == 0 and read.reference_name != "chrM" and barcode_metrics[read.get_tag(barcode_tag)][0] > cutoff*2:
-            outfile.write(read)
+        if read.reference_id != chrM_tid:
+             if read.flag & 260 == 0:
+                 # Optimize filtering by using set lookup
+                 if read.get_tag(barcode_tag) in valid_barcodes:
+                    outfile.write(read)
 
     outfile.close()
     return
