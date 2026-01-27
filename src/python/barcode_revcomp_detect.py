@@ -62,7 +62,7 @@ try:
     out = sys.argv[5]
     thres = sys.argv[6]
 
-    if modality == "10x":
+    if modality == "10x" or modality == "10x_v2":
         offset = 0
         bc_detect(fastq, whitelist, out, qc, offset, 100000, float(thres))
     elif modality == "10x_multiome":

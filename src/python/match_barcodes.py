@@ -163,7 +163,7 @@ fastqs = {
 revcomp = {
     "R2": sys.argv[6],
 }
-if modality == "10x":
+if modality == "10x" or modality == "10x_v2":
     whitelists = {
         "R2": whitelist,
     }
