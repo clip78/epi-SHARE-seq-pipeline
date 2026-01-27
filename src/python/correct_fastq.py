@@ -87,6 +87,7 @@ def process_fastqs(input_read1_fastq_file, input_read2_fastq_file,
     dictionaries for R1, R2, R3 barcodes. 
     Corrects barcodes and writes corrected R1R2R3 sequence and corresponding quality
     string into output FASTQ files.
+    For SHARE-seq, it expects barcodes in the last 99bp of Read 2.
     Also produces txt file with barcode QC statistics; reports number of 
     exact barcode matches, non-exact barcode matches, non-matches, homopolymer G barcodes,
     homopolymer Gs in first 10bp of read 2 (UMI sequence for RNA, gDNA sequence for ATAC).
