@@ -32,8 +32,7 @@ def bam_to_frag(in_path, out_path, barcode_tag="CB", shift_plus=4, shift_minus=-
                 buf.append(data)
             else:
                 buf.sort()
-                for i in buf:
-                    print(*i, sep="\t", file=out_file)
+                out_file.write("".join(f"{i[0]}\t{i[1]}\t{i[2]}\t{i[3]}\t{i[4]}\n" for i in buf))
                 buf.clear()
                 buf.append(data)
                 curr_pos = pos
