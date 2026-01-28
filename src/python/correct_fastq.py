@@ -242,7 +242,7 @@ def process_fastqs(input_read1_fastq_file, input_read2_fastq_file,
                                     initargs=(r1_barcodes, r2_barcodes, r3_barcodes, sample_type, pkr, bool(barcode_fh)))
 
         try:
-            generator = chunk_generator(iterators, read1_fh, read2_fh, barcode_fh, chunk_size=1000)
+            generator = chunk_generator(iterators, read1_fh, read2_fh, barcode_fh, chunk_size=10000)
             
             # Using imap for ordered results
             for r1_out, r2_out, stats in pool.imap(process_chunk, generator):
