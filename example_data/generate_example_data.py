@@ -38,6 +38,11 @@ invalid_barcode_seq = valid_barcode_seq.replace("A", "G").replace("C", "T").repl
 # Common Names
 names = ["READ1", "READ2"]
 
+# PKR Barcode (8bp) - arbitrary
+pkr_seq = "TGCATGCAT" # 9bp? Usually 8. Let's make it 8.
+pkr_seq = "TGCATGCA"
+pkr_seqs = [pkr_seq, pkr_seq]
+
 # --- RNA ---
 # R1: cDNA (Biological)
 rna_r1_seqs = ["ACGTACGTACGTACGTACGT", "TGCATGCATGCATGCATGCA"]
@@ -49,15 +54,19 @@ rna_r2_seqs = [
     "NNNNNNNNNN"  # UMI for Read 2
 ]
 
-# Barcode Read (I2)
-rna_bc_seqs = [
+# I1: Cell Barcodes (99bp)
+rna_i1_seqs = [
     valid_barcode_seq,
     invalid_barcode_seq
 ]
 
+# I2: PKR (8bp)
+rna_i2_seqs = pkr_seqs
+
 write_fastq("example_data/rna_R1.fastq.gz", rna_r1_seqs, names)
 write_fastq("example_data/rna_R2.fastq.gz", rna_r2_seqs, names)
-write_fastq("example_data/rna_barcode.fastq.gz", rna_bc_seqs, names)
+write_fastq("example_data/rna_I1.fastq.gz", rna_i1_seqs, names)
+write_fastq("example_data/rna_I2.fastq.gz", rna_i2_seqs, names)
 
 
 # --- ATAC ---
@@ -67,14 +76,18 @@ atac_r1_seqs = ["GCTAGCTAGCTAGCTAGCTA", "CGATCGATCGATCGATCGAT"]
 # R2: Genomic Read 2
 atac_r2_seqs = ["ATATATATATATATATATAT", "GCGCGCGCGCGCGCGCGCGC"]
 
-# Barcode Read (I2)
-atac_bc_seqs = [
+# I1: Cell Barcodes (99bp)
+atac_i1_seqs = [
     valid_barcode_seq,
     invalid_barcode_seq
 ]
 
+# I2: PKR (8bp)
+atac_i2_seqs = pkr_seqs
+
 write_fastq("example_data/atac_R1.fastq.gz", atac_r1_seqs, names)
 write_fastq("example_data/atac_R2.fastq.gz", atac_r2_seqs, names)
-write_fastq("example_data/atac_barcode.fastq.gz", atac_bc_seqs, names)
+write_fastq("example_data/atac_I1.fastq.gz", atac_i1_seqs, names)
+write_fastq("example_data/atac_I2.fastq.gz", atac_i2_seqs, names)
 
 print("Files generated.")
