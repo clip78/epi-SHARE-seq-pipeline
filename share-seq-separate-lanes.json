@@ -1,20 +1,21 @@
 {
-  "wf_preprocess.read1": [
+  "demultiplex_fastq.read1": [
     "lane1_rna_R1_cDNA.fq.gz",
     "lane2_atac_R1_genomic.fq.gz"
   ],
-  "wf_preprocess.read2": [
+  "demultiplex_fastq.read2": [
     "lane1_rna_R2_UMI.fq.gz",
     "lane2_atac_R2_genomic.fq.gz"
   ],
-  "wf_preprocess.index1": [
+  "demultiplex_fastq.index1": [
     "lane1_rna_I1_cellBC.fq.gz",
     "lane2_atac_I1_cellBC.fq.gz"
   ],
-  "wf_preprocess.index2": [
+  "demultiplex_fastq.index2": [
     "lane1_rna_I2_libBC.fq.gz",
     "lane2_atac_I2_libBC.fq.gz"
   ],
-  "wf_preprocess.rna_primers": "P1.17,P1.18",
-  "wf_preprocess.atac_primers": "P1.01,P1.02"
+  "demultiplex_fastq.rna_primers": "P1.17,P1.18",
+  "demultiplex_fastq.atac_primers": "P1.01,P1.02",
+  "demultiplex_fastq.metaCsv": "dummy.csv"
 }
