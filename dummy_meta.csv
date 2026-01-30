@@ -1,0 +1,3 @@
+pkrId,library,R1barcodeSet,sampleType,genome,notes,laneIdentifier
+PKR1,RNA_Library,P1.17_P1.18,rna,hg38,test_rna,lane1
+PKR1,ATAC_Library,P1.01_P1.02,atac,hg38,test_atac,lane2

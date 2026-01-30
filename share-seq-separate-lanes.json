@@ -17,5 +17,5 @@
   ],
   "demultiplex_fastq.rna_primers": "P1.17,P1.18",
   "demultiplex_fastq.atac_primers": "P1.01,P1.02",
-  "demultiplex_fastq.metaCsv": "dummy.csv"
+  "demultiplex_fastq.metaCsv": "dummy_meta.csv"
 }
