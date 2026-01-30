@@ -4,7 +4,9 @@ import os
 def write_fastq(filename, sequences, names):
     with gzip.open(filename, 'wt') as f:
         for i, (seq, name) in enumerate(zip(sequences, names)):
-            f.write(f"@{name}\n{seq}\n+\n{'F'*len(seq)}\n")
+            # Create a quality string of the same length as the sequence
+            qual = 'F' * len(seq)
+            f.write(f"@{name}\n{seq}\n+\n{qual}\n")
 
 # Setup
 os.makedirs("example_data", exist_ok=True)
@@ -33,26 +35,46 @@ valid_barcode_seq = "".join(base_99)
 # Invalid barcode sequence (mutated)
 invalid_barcode_seq = valid_barcode_seq.replace("A", "G").replace("C", "T").replace("G", "A")
 
-# RNA
+# Common Names
+names = ["READ1", "READ2"]
+
+# --- RNA ---
+# R1: cDNA (Biological)
 rna_r1_seqs = ["ACGTACGTACGTACGTACGT", "TGCATGCATGCATGCATGCA"]
-rna_names = ["READ1", "READ2"]
+
+# R2: UMI (10bp)
+# Note: The pipeline expects the UMI to be in R2.
 rna_r2_seqs = [
-    "NNNNNNNNNN" + valid_barcode_seq, # UMI + Valid
-    "NNNNNNNNNN" + invalid_barcode_seq # UMI + Invalid
+    "NNNNNNNNNN", # UMI for Read 1
+    "NNNNNNNNNN"  # UMI for Read 2
 ]
 
-write_fastq("example_data/rna_R1.fastq.gz", rna_r1_seqs, rna_names)
-write_fastq("example_data/rna_R2.fastq.gz", rna_r2_seqs, rna_names)
+# Barcode Read (I2)
+rna_bc_seqs = [
+    valid_barcode_seq,
+    invalid_barcode_seq
+]
 
-# ATAC
+write_fastq("example_data/rna_R1.fastq.gz", rna_r1_seqs, names)
+write_fastq("example_data/rna_R2.fastq.gz", rna_r2_seqs, names)
+write_fastq("example_data/rna_barcode.fastq.gz", rna_bc_seqs, names)
+
+
+# --- ATAC ---
+# R1: Genomic Read 1
 atac_r1_seqs = ["GCTAGCTAGCTAGCTAGCTA", "CGATCGATCGATCGATCGAT"]
-atac_names = ["READ1", "READ2"]
-atac_r2_seqs = [
-    "ATATATATATATATATATAT" + valid_barcode_seq, # Genomic + Valid
-    "ATATATATATATATATATAT" + invalid_barcode_seq # Genomic + Invalid
+
+# R2: Genomic Read 2
+atac_r2_seqs = ["ATATATATATATATATATAT", "GCGCGCGCGCGCGCGCGCGC"]
+
+# Barcode Read (I2)
+atac_bc_seqs = [
+    valid_barcode_seq,
+    invalid_barcode_seq
 ]
 
-write_fastq("example_data/atac_R1.fastq.gz", atac_r1_seqs, atac_names)
-write_fastq("example_data/atac_R2.fastq.gz", atac_r2_seqs, atac_names)
+write_fastq("example_data/atac_R1.fastq.gz", atac_r1_seqs, names)
+write_fastq("example_data/atac_R2.fastq.gz", atac_r2_seqs, names)
+write_fastq("example_data/atac_barcode.fastq.gz", atac_bc_seqs, names)
 
 print("Files generated.")
