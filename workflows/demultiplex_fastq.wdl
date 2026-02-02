@@ -124,6 +124,7 @@ CODE
 
         # Convert SAM to BAM
         samtools view -bS "lane~{lane}_L~{lane}.sam" > "lane~{lane}_L~{lane}.bam"
+        rm "lane~{lane}_L~{lane}.sam"
     >>>
 
     output {
