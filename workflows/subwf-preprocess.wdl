@@ -408,7 +408,7 @@ task BamLookUp {
 
 	command <<<
 		bucket="~{bucket}"
-		file=~{bam}
+		file=$(basename "~{bam}")
 		lib="${file%_*} "
 		grep -w $lib ~{metaCsv} | cut -d, -f1 | sed 's/ /-/' > pkrId.txt
 		echo ${file%_*} > library.txt
