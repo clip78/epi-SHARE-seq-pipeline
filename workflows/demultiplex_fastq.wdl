@@ -32,7 +32,8 @@ workflow demultiplex_fastq {
         call subwf.BamLookUp {
             input:
                 bam = FastqToBam.out_bam,
-                metaCsv = metaCsv
+                metaCsv = metaCsv,
+                bucket = ""
         }
 
         # 3. Demultiplex/Split the BAM into raw FASTQs per library.
