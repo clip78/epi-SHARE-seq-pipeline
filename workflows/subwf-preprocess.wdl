@@ -130,7 +130,7 @@ workflow wf_preprocess {
     if (!defined(local_bams)) {
         call QC {
             input:
-                barcodeMetrics = select_all(ExtractBarcodes.barcodeMetrics)
+                barcodeMetrics = select_first([ExtractBarcodes.barcodeMetrics, []])
         }
     }
 
