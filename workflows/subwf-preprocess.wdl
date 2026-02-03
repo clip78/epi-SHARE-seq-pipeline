@@ -15,7 +15,7 @@ struct Fastq {
 workflow wf_preprocess {
 	input {
 		# Preprocess inputs
-		File bcl
+		File? bcl
 		Boolean zipped = true
 		Array[Int]? lanes
 		File metaCsv
@@ -29,18 +29,18 @@ workflow wf_preprocess {
 
 	String barcodeStructure = "99M8B"
 	String sequencingCenter = "BI"
-	String tar_flags = if zipped then 'xzf' else 'xf'
-	String untarBcl =
+	String? tar_flags = if zipped then 'xzf' else 'xf'
+	String untarBcl = if defined(bcl) then
 		'gsutil -m -o GSUtil:parallel_thread_count=1' +
 		' -o GSUtil:sliced_object_download_max_components=8' +
 		' cp "~{bcl}" . && ' +
-		'tar "~{tar_flags}" "~{basename(bcl)}" --exclude Images --exclude Thumbnail_Images' 
+		'tar "~{tar_flags}" "~{basename(select_first([bcl]))}" --exclude Images --exclude Thumbnail_Images' else ""
 	
-	String getSampleSheet =
+	String getSampleSheet = if defined(bcl) then
 		'gsutil -m -o GSUtil:parallel_thread_count=1' +
 		' -o GSUtil:sliced_object_download_max_components=8' +
 		' cp "~{bcl}" . && ' +
-		'tar "~{tar_flags}" "~{basename(bcl)}" SampleSheet.csv'
+		'tar "~{tar_flags}" "~{basename(select_first([bcl]))}" SampleSheet.csv' else ""
 
     if (!defined(local_bams)) {
         if (!defined(lanes)){
@@ -137,7 +137,7 @@ workflow wf_preprocess {
 	call GatherOutputs {
 		input:
 			rows = WriteTsvRow.row,
-			name =  if zipped then basename(bcl, ".tar.gz") else basename(bcl, ".tar"),
+			name =  if defined(bcl) then (if zipped then basename(select_first([bcl]), ".tar.gz") else basename(select_first([bcl]), ".tar")) else "local_bams",
 			metaCsv = metaCsv, 
 			dockerImage = dockerImage
 	}
