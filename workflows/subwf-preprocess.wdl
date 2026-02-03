@@ -19,9 +19,12 @@ workflow wf_preprocess {
 		Boolean zipped = true
 		Array[Int]? lanes
 		File metaCsv
-		String terra_project # set to none or make optional
-		String workspace_name
+		String? terra_project # set to none or make optional
+		String? workspace_name
 		String dockerImage = "us.gcr.io/buenrostro-share-seq/share_task_preprocess"
+
+        # Optional inputs for testing/manual override
+        Array[File]? local_bams
 	}
 
 	String barcodeStructure = "99M8B"
@@ -39,116 +42,125 @@ workflow wf_preprocess {
 		' cp "~{bcl}" . && ' +
 		'tar "~{tar_flags}" "~{basename(bcl)}" SampleSheet.csv'
 
-	if (!defined(lanes)){
-		call GetLanes { 
-			input: 
-				bcl = bcl, 
-				untarBcl = getSampleSheet
-		}
-	}
+    if (!defined(local_bams)) {
+        if (!defined(lanes)){
+            call GetLanes {
+                input:
+                    bcl = bcl,
+                    untarBcl = getSampleSheet
+            }
+        }
 
-	Int lengthLanes = length(select_first([lanes, GetLanes.lanes]))
-	# memory estimate for BasecallsToBam depends on estimated size of one lane of data
-	Float bclSize = size(bcl, 'G')
-	Float memory = ceil(1.4 * bclSize + 147) / lengthLanes
-	Float memory2 = (ceil(0.8 * bclSize) * 1.25) / lengthLanes # an unusual increase from 0.25 x for black swan
-	
-	scatter (lane in select_first([lanes, GetLanes.lanes])) {
-		call BarcodeMap {
-			input:
-				metaCsv = metaCsv,
-				lane = lane
-		}
+        Int lengthLanes = length(select_first([lanes, GetLanes.lanes]))
+        # memory estimate for BasecallsToBam depends on estimated size of one lane of data
+        Float bclSize = size(bcl, 'G')
+        Float memory = ceil(1.4 * bclSize + 147) / lengthLanes
+        Float memory2 = (ceil(0.8 * bclSize) * 1.25) / lengthLanes # an unusual increase from 0.25 x for black swan
+
+        scatter (lane in select_first([lanes, GetLanes.lanes])) {
+            call BarcodeMap {
+                input:
+                    metaCsv = metaCsv,
+                    lane = lane
+            }
 
 
-		call ExtractBarcodes {
-			input:
-				bcl = bcl,
-				untarBcl = untarBcl,
-				libraryBarcodes = BarcodeMap.out,
-				barcodeStructure = barcodeStructure,
-				lane = lane,
-				dockerImage = dockerImage,
-				memory = memory2
-		}
+            call ExtractBarcodes {
+                input:
+                    bcl = bcl,
+                    untarBcl = untarBcl,
+                    libraryBarcodes = BarcodeMap.out,
+                    barcodeStructure = barcodeStructure,
+                    lane = lane,
+                    dockerImage = dockerImage,
+                    memory = memory2
+            }
 
-		call BasecallsToBams {
-			input:
-				bcl = bcl,
-				untarBcl = untarBcl,
-				barcodes = ExtractBarcodes.barcodes,
-				libraryBarcodes = BarcodeMap.out,
-				readStructure = ExtractBarcodes.readStructure,
-				lane = lane,
-				sequencingCenter = sequencingCenter,
-				dockerImage = dockerImage,
-				memory = memory
-		}
+            call BasecallsToBams {
+                input:
+                    bcl = bcl,
+                    untarBcl = untarBcl,
+                    barcodes = ExtractBarcodes.barcodes,
+                    libraryBarcodes = BarcodeMap.out,
+                    readStructure = ExtractBarcodes.readStructure,
+                    lane = lane,
+                    sequencingCenter = sequencingCenter,
+                    dockerImage = dockerImage,
+                    memory = memory
+            }
+        }
+    }
 
-		scatter(bam in BasecallsToBams.bams){
-			# Convert unmapped, library-separated bams to fastqs
-			# will assign cell barcode to read name 
-			# assigns UMI for RNA to read name and adapter trims for ATAC
-			call BamLookUp {
-				input:
-					bam = basename(bam),
-					metaCsv = metaCsv,
-			}
+    Array[File] bams_to_process = select_first([local_bams, flatten(select_first([BasecallsToBams.bams, []]))])
 
-			call BamToRawFastq { 
-				input: 
-					bam=bam,
-					pkrId = BamLookUp.pkrId,
-					library = BamLookUp.library,
-					sampleType = BamLookUp.sampleType, 
-					genome = BamLookUp.genome,
-					notes = BamLookUp.notes,
-					R1barcodeSet = BamLookUp.R1barcodeSet, 
-					dockerImage = dockerImage
-			}
+    scatter(bam in bams_to_process){
+        # Convert unmapped, library-separated bams to fastqs
+        # will assign cell barcode to read name
+        # assigns UMI for RNA to read name and adapter trims for ATAC
+        call BamLookUp {
+            input:
+                bam = basename(bam),
+                metaCsv = metaCsv,
+                bucket = if defined(local_bams) then "" else "gs://broad-buenrostro-bcl-outputs/"
+        }
 
-			call WriteTsvRow {
-				input:
-					fastq = BamToRawFastq.out
-			}
-		}
-	}
+        call BamToRawFastq {
+            input:
+                bam=bam,
+                pkrId = BamLookUp.pkrId,
+                library = BamLookUp.library,
+                sampleType = BamLookUp.sampleType,
+                genome = BamLookUp.genome,
+                notes = BamLookUp.notes,
+                R1barcodeSet = BamLookUp.R1barcodeSet,
+                dockerImage = dockerImage
+        }
+
+        call WriteTsvRow {
+            input:
+                fastq = BamToRawFastq.out
+        }
+    }
 
 	call AggregateBarcodeQC {
 		input:
-			barcodeQCs = flatten(BamToRawFastq.R1barcodeQC)
+			barcodeQCs = BamToRawFastq.R1barcodeQC
 	}
 
-	call QC {
-		input:
-			barcodeMetrics = ExtractBarcodes.barcodeMetrics
-	}
+    if (!defined(local_bams)) {
+        call QC {
+            input:
+                barcodeMetrics = select_all(ExtractBarcodes.barcodeMetrics)
+        }
+    }
 
 	call GatherOutputs {
 		input:
-			rows = flatten(WriteTsvRow.row),
+			rows = WriteTsvRow.row,
 			name =  if zipped then basename(bcl, ".tar.gz") else basename(bcl, ".tar"),
 			metaCsv = metaCsv, 
 			dockerImage = dockerImage
 	}
 
-	call TerraUpsert {
-		input:
-			rna_tsv = GatherOutputs.rna_tsv,
-			rna_no_tsv = GatherOutputs.rna_no_tsv,
-			atac_tsv = GatherOutputs.atac_tsv,
-			run_tsv = GatherOutputs.run_tsv,
-			terra_project = terra_project,
-			workspace_name = workspace_name, 
-			dockerImage = dockerImage
-	} 
+    if ( defined(terra_project) ) {
+        call TerraUpsert {
+            input:
+                rna_tsv = GatherOutputs.rna_tsv,
+                rna_no_tsv = GatherOutputs.rna_no_tsv,
+                atac_tsv = GatherOutputs.atac_tsv,
+                run_tsv = GatherOutputs.run_tsv,
+                terra_project = select_first([terra_project]),
+                workspace_name = select_first([workspace_name]),
+                dockerImage = dockerImage
+        }
+    }
 
 	output {
-		Array[String] percentMismatch = QC.percentMismatch
-		Array[String] terraResponse = TerraUpsert.upsert_response
-		Array[File] monitorLogsExtract = ExtractBarcodes.monitorLog
-		Array[File] monitorLogsBasecalls = BasecallsToBams.monitorLog
-		Array[Array[File]] monitorLogsBamToRawFastq = BamToRawFastq.monitorLog		
+        Array[String]? percentMismatch = QC.percentMismatch
+		Array[String]? terraResponse = TerraUpsert.upsert_response
+        Array[File]? monitorLogsExtract = ExtractBarcodes.monitorLog
+        Array[File]? monitorLogsBasecalls = BasecallsToBams.monitorLog
+		Array[File] monitorLogsBamToRawFastq = BamToRawFastq.monitorLog
 		File BarcodeQC = AggregateBarcodeQC.laneQC
 	}
 }
@@ -408,7 +420,7 @@ task BamLookUp {
 
 	command <<<
 		bucket="~{bucket}"
-		file=~{bam}
+		file=$(basename "~{bam}")
 		lib="${file%_*} "
 		grep -w $lib ~{metaCsv} | cut -d, -f1 | sed 's/ /-/' > pkrId.txt
 		echo ${file%_*} > library.txt
