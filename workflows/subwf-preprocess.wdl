@@ -403,10 +403,11 @@ task BamLookUp {
 	input {
 		String bam
 		File metaCsv
+        String bucket = "gs://broad-buenrostro-bcl-outputs/"
 	}
 
 	command <<<
-		bucket="gs://broad-buenrostro-bcl-outputs/"
+		bucket="~{bucket}"
 		file=~{bam}
 		lib="${file%_*} "
 		grep -w $lib ~{metaCsv} | cut -d, -f1 | sed 's/ /-/' > pkrId.txt

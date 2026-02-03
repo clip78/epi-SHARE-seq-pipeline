@@ -32,7 +32,8 @@ workflow demultiplex_fastq {
         call subwf.BamLookUp {
             input:
                 bam = FastqToBam.out_bam,
-                metaCsv = metaCsv
+                metaCsv = metaCsv,
+                bucket = ""
         }
 
         # 3. Demultiplex/Split the BAM into raw FASTQs per library.
@@ -78,7 +79,7 @@ r2_path = "~{r2}"
 i1_path = "~{i1}"
 i2_path = "~{i2}"
 lane = "~{lane}"
-output_sam = "lane" + lane + ".sam"
+output_sam = "lane" + lane + "_L" + lane + ".sam"
 
 with open_file(r1_path) as f1, open_file(r2_path) as f2, open_file(i1_path) as i1, open_file(i2_path) as i2, open(output_sam, 'w') as out:
     # Write SAM header
@@ -110,29 +111,25 @@ with open_file(r1_path) as f1, open_file(r2_path) as f2, open_file(i1_path) as i
         if not n1: break
 
         # Construct RX/QX tags (Concatenate I1 and I2)
-        # Note: bam_to_raw_fastq.py expects specific offsets, so this concatenation strategy
-        # assumes the pipeline expects I1+I2.
         rx = si1 + si2
         qx = qi1 + qi2
 
         # Write Read 1 record
-        # FLAG 77 (PAIRED, UNMAPPED, MATE UNMAPPED, READ1)
-        # RNAME *, POS 0, MAPQ 0, CIGAR *, RNEXT *, PNEXT 0, TLEN 0
-        read_name = n1.split()[0][1:] # Remove @ and description
+        read_name = n1.split()[0][1:]
         out.write(f"{read_name}\t77\t*\t0\t0\t*\t*\t0\t0\t{s1}\t{q1}\tRG:Z:Lane{lane}\tRX:Z:{rx}\tQX:Z:{qx}\n")
 
         # Write Read 2 record
-        # FLAG 141 (PAIRED, UNMAPPED, MATE UNMAPPED, READ2)
         out.write(f"{read_name}\t141\t*\t0\t0\t*\t*\t0\t0\t{s2}\t{q2}\tRG:Z:Lane{lane}\tRX:Z:{rx}\tQX:Z:{qx}\n")
 
 CODE
 
         # Convert SAM to BAM
-        samtools view -bS "lane~{lane}.sam" > "lane~{lane}.bam"
+        samtools view -bS "lane~{lane}_L~{lane}.sam" > "lane~{lane}_L~{lane}.bam"
+        rm "lane~{lane}_L~{lane}.sam"
     >>>
 
     output {
-        File out_bam = "lane~{lane}.bam"
+        File out_bam = "lane~{lane}_L~{lane}.bam"
     }
 
     runtime {
