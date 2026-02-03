@@ -421,12 +421,16 @@ task BamLookUp {
 	command <<<
 		bucket="~{bucket}"
 		file=$(basename "~{bam}")
-		lib="${file%_*} "
-		grep -w $lib ~{metaCsv} | cut -d, -f1 | sed 's/ /-/' > pkrId.txt
-		echo ${file%_*} > library.txt
-		barcode1=$(grep -w $lib ~{metaCsv} | cut -d, -f3)
+		lib="${file%_*}"
+		grep -w "$lib" ~{metaCsv} | cut -d, -f1 | sed 's/ /-/' > pkrId.txt
+		echo "$lib" > library.txt
+		barcode1=$(grep -w "$lib" ~{metaCsv} | cut -d, -f3)
+        if [ -z "$barcode1" ]; then
+            echo "Error: Library '$lib' not found in metaCsv or barcode column is empty."
+            exit 1
+        fi
 		echo ${bucket}${barcode1}.txt > R1barcodeSet.txt
-		grep -w $lib ~{metaCsv} | cut -d, -f4 > sampleType.txt
+		grep -w "$lib" ~{metaCsv} | cut -d, -f4 > sampleType.txt
 		grep -w $lib ~{metaCsv} | cut -d, -f5 > genome.txt
 		grep -w $lib ~{metaCsv} | cut -d, -f6 > notes.txt
 	>>>
