@@ -46,7 +46,7 @@ workflow wf_preprocess {
         if (!defined(lanes)){
             call GetLanes {
                 input:
-                    bcl = bcl,
+                    bcl = select_first([bcl]),
                     untarBcl = getSampleSheet
             }
         }
@@ -67,7 +67,7 @@ workflow wf_preprocess {
 
             call ExtractBarcodes {
                 input:
-                    bcl = bcl,
+                    bcl = select_first([bcl]),
                     untarBcl = untarBcl,
                     libraryBarcodes = BarcodeMap.out,
                     barcodeStructure = barcodeStructure,
@@ -78,7 +78,7 @@ workflow wf_preprocess {
 
             call BasecallsToBams {
                 input:
-                    bcl = bcl,
+                    bcl = select_first([bcl]),
                     untarBcl = untarBcl,
                     barcodes = ExtractBarcodes.barcodes,
                     libraryBarcodes = BarcodeMap.out,
