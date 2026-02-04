@@ -420,11 +420,13 @@ task BamLookUp {
 
 	command <<<
 		bucket="~{bucket}"
-		file=$(basename "~{bam}")
-		lib="${file%_*}"
+		lib=$(basename "~{bam}" .bam | cut -d_ -f1)
+
+		# Sanitize CSV to remove carriage returns
+		sed 's/\r//g' ~{metaCsv} > cleaned_meta.csv
 
 		# Extract metadata specifically matching the laneIdentifier (column 7)
-		pkr_line=$(awk -F, '$7 == "'"$lib"'"' ~{metaCsv} | head -n 1)
+		pkr_line=$(awk -F, '$7 == "'"$lib"'"' cleaned_meta.csv | head -n 1)
 
 		if [ -z "$pkr_line" ]; then
 			echo "Error: Lane identifier '$lib' not found in column 7 of metaCsv."
