@@ -422,20 +422,30 @@ task BamLookUp {
 		bucket="~{bucket}"
 		file=$(basename "~{bam}")
 		lib="${file%_*}"
-        # Search for the library ID (lane identifier) in the CSV and take the first match
-		grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f1 | sed 's/ /-/' > pkrId.txt
+
+		# Extract metadata specifically matching the laneIdentifier (column 7)
+		pkr_line=$(awk -F, '$7 == "'"$lib"'"' ~{metaCsv} | head -n 1)
+
+		if [ -z "$pkr_line" ]; then
+			echo "Error: Lane identifier '$lib' not found in column 7 of metaCsv."
+			exit 1
+		fi
+
+		echo "$pkr_line" | cut -d, -f1 | sed 's/ /-/g' > pkrId.txt
 		echo "$lib" > library.txt
-		barcode1=$(grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f3)
-        if [ -z "$barcode1" ]; then
-            echo "Error: Library '$lib' not found in metaCsv or barcode column is empty."
-            exit 1
-        fi
-        # If bucket is empty (local), assume relative path or absolute path from CSV.
-        # Otherwise, prepend bucket.
-		echo ${bucket}${barcode1}.txt > R1barcodeSet.txt
-		grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f4 > sampleType.txt
-		grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f5 > genome.txt
-		grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f6 > notes.txt
+		barcode1=$(echo "$pkr_line" | cut -d, -f3)
+
+		if [ -z "$barcode1" ]; then
+			echo "Error: Library '$lib' not found in metaCsv or barcode column is empty."
+			exit 1
+		fi
+
+		# If bucket is empty (local), assume relative path or absolute path from CSV.
+		# Otherwise, prepend bucket.
+		echo "${bucket}${barcode1}.txt" > R1barcodeSet.txt
+		echo "$pkr_line" | cut -d, -f4 > sampleType.txt
+		echo "$pkr_line" | cut -d, -f5 > genome.txt
+		echo "$pkr_line" | cut -d, -f6 > notes.txt
 	>>>
 
 	output {
