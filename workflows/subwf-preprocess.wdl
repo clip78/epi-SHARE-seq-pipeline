@@ -422,17 +422,20 @@ task BamLookUp {
 		bucket="~{bucket}"
 		file=$(basename "~{bam}")
 		lib="${file%_*}"
-		grep -w "$lib" ~{metaCsv} | cut -d, -f1 | sed 's/ /-/' > pkrId.txt
+        # Search for the library ID (lane identifier) in the CSV and take the first match
+		grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f1 | sed 's/ /-/' > pkrId.txt
 		echo "$lib" > library.txt
-		barcode1=$(grep -w "$lib" ~{metaCsv} | cut -d, -f3)
+		barcode1=$(grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f3)
         if [ -z "$barcode1" ]; then
             echo "Error: Library '$lib' not found in metaCsv or barcode column is empty."
             exit 1
         fi
+        # If bucket is empty (local), assume relative path or absolute path from CSV.
+        # Otherwise, prepend bucket.
 		echo ${bucket}${barcode1}.txt > R1barcodeSet.txt
-		grep -w "$lib" ~{metaCsv} | cut -d, -f4 > sampleType.txt
-		grep -w $lib ~{metaCsv} | cut -d, -f5 > genome.txt
-		grep -w $lib ~{metaCsv} | cut -d, -f6 > notes.txt
+		grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f4 > sampleType.txt
+		grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f5 > genome.txt
+		grep -w "$lib" ~{metaCsv} | head -n 1 | cut -d, -f6 > notes.txt
 	>>>
 
 	output {
