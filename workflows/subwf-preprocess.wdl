@@ -492,7 +492,9 @@ task BamToRawFastq {
 	command <<<
 		set -e
 		
-		bash $(which monitor_script.sh) | tee ~{monitorLog} 1>&2 &
+		bash $(which monitor_script.sh) > ~{monitorLog} 2>&1 &
+
+		samtools index ~{bam}
 
 		# Create raw FASTQs from unaligned bam
 		python3 /software/bam_to_raw_fastq.py \
