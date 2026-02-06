@@ -104,9 +104,16 @@ workflow wf_preprocess {
                 bucket = if defined(local_bams) then "" else "gs://broad-buenrostro-bcl-outputs/"
         }
 
+        call IndexBam {
+            input:
+                bam = bam,
+                dockerImage = dockerImage
+        }
+
         call BamToRawFastq {
             input:
                 bam=bam,
+                bamIndex=IndexBam.bam_index,
                 pkrId = BamLookUp.pkrId,
                 library = BamLookUp.library,
                 sampleType = BamLookUp.sampleType,
@@ -464,11 +471,44 @@ task BamLookUp {
 	}
 }
 
+task IndexBam {
+	input {
+		File bam
+		Float diskFactor = 2.0
+		Float memory = 4.0
+		String dockerImage
+	}
+
+	Float bamSize = size(bam, 'G')
+	Int diskSize = ceil(diskFactor * bamSize)
+	String diskType = if diskSize > 375 then "SSD" else "LOCAL"
+	String monitorLog = "index_bam_monitor.log"
+
+	command <<<
+		set -e
+		bash $(which monitor_script.sh) > ~{monitorLog} 2>&1 &
+		ln -s ~{bam} input.bam
+		samtools index input.bam
+	>>>
+
+	output {
+		File bam_index = "input.bam.bai"
+		File monitorLog = monitorLog
+	}
+
+	runtime {
+		docker: dockerImage
+		disks: "local-disk ~{diskSize} ~{diskType}"
+		memory: memory + 'G'
+	}
+}
+
 task BamToRawFastq {
 	# Convert unmapped, library-separated bams to raw (uncorrected) FASTQs
 	# Defaults to file R1.txt in the src/python directory if no round barcodes given
 	input {
 		File bam
+		File? bamIndex
 		String pkrId
 		String library
 		String sampleType
@@ -494,11 +534,14 @@ task BamToRawFastq {
 		
 		bash $(which monitor_script.sh) > ~{monitorLog} 2>&1 &
 
-		samtools index ~{bam}
+		ln -s ~{bam} input.bam
+		if [ -n "~{bamIndex}" ]; then
+			ln -s ~{bamIndex} input.bam.bai
+		fi
 
 		# Create raw FASTQs from unaligned bam
 		python3 /software/bam_to_raw_fastq.py \
-			~{bam} \
+			input.bam \
 			~{pkrId} \
 			~{prefix} \
 			~{R1barcodeSet} \
