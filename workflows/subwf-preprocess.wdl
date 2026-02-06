@@ -487,11 +487,12 @@ task IndexBam {
 	command <<<
 		set -e
 		bash $(which monitor_script.sh) > ~{monitorLog} 2>&1 &
-		samtools index ~{bam}
+		ln -s ~{bam} input.bam
+		samtools index input.bam
 	>>>
 
 	output {
-		File bam_index = glob("*.bai")[0]
+		File bam_index = "input.bam.bai"
 		File monitorLog = monitorLog
 	}
 
