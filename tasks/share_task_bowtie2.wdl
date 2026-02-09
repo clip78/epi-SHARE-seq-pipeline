@@ -75,7 +75,7 @@ task share_atac_align {
             --rg "SM:None" \
             --rg "LB:None" \
             --rg "PL:Illumina" \
-            ~{if "~{chemistry}" != "shareseq" then "--sam-append-comment" else ""} \
+            ~{if chemistry != "shareseq" then "--sam-append-comment" else ""} \
             -x $genome_prefix \
             -1 ~{sep="," fastq_R1} \
             -2 ~{sep="," fastq_R2} 2> ~{alignment_log} | \
@@ -94,7 +94,7 @@ task share_atac_align {
                 ~{unsorted_bam} \
                 -o ~{sorted_bam}
         else
-            # Splitting the read name to ge the cell barcode and adding it to the CB tag in the BAM file.
+            # Splitting the read name to get the cell barcode and adding it to the CB tag in the BAM file.
             samtools view -h ~{unsorted_bam} | \
             awk '{if ($0 ~ /^@/) {print $0} else {n=split($1,a,"[,_]"); if ( n > 4 ) {print($0 "\tCB:Z:" a[2]a[3]a[4] "\tXC:Z:" a[2]a[3]a[4] "_" a[5]);}else{print($0 "\tCB:Z:" a[2]a[3]a[4] "\tXC:Z:" a[2]a[3]a[4])}}}' | \
             samtools sort \

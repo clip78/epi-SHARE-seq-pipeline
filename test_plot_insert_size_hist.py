@@ -1,22 +1,30 @@
+import os
+import tempfile
 import unittest
+
 import pandas as pd
+
 from src.python.plot_insert_size_hist import get_hist_vals
 
 class TestGetHistVals(unittest.TestCase):
 
     def test_get_hist_vals(self):
         # Create a sample histogram file
-        with open("test_histogram.txt", "w") as f:
-            f.write("# A sample Picard CollectInsertSizeMetrics histogram file\n")
-            f.write("# This file is used for testing the plot_insert_size_hist.py script.\n")
-            f.write("\n")
-            f.write("insert_size\tAll_Reads.fr_count\n")
-            f.write("10\t100\n")
-            f.write("20\t200\n")
-            f.write("30\t300\n")
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            temp_file.write("# A sample Picard CollectInsertSizeMetrics histogram file\n")
+            temp_file.write("# This file is used for testing the plot_insert_size_hist.py script.\n")
+            temp_file.write("\n")
+            temp_file.write("insert_size\tAll_Reads.fr_count\n")
+            temp_file.write("10\t100\n")
+            temp_file.write("20\t200\n")
+            temp_file.write("30\t300\n")
+            histogram_path = temp_file.name
 
-        # Call the function with the test file
-        df = get_hist_vals("test_histogram.txt")
+        try:
+            # Call the function with the test file
+            df = get_hist_vals(histogram_path)
+        finally:
+            os.unlink(histogram_path)
 
         # Check the output dataframe
         expected_df = pd.DataFrame({

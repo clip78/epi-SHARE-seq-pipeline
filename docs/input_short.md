@@ -57,7 +57,7 @@ Mandatory parameters.
         >IMPORTANT: Processing `subpools` at the moment is a two-step process. Each `subpool` needs to be processed independently with the `share.pkr` to track the `subpools` provenance and is only aggregated afterwards.
     * `share.prefix`: Prefix used to name the output files.
     * `share.align_multimappers`: This is an integer indicating how many multimappers are allowed when aligning gDNA using bowtie2. The default is to not use multimappers,k but it is recommended to use a value of `5` as recommended by the ENCODE DAC.
-    * `share.barcode_tag_fragments`: When processing samples from different `subpools`, it is important to set this value to `XC`. This is the defaut for the `shareseq` chemistry but not for 10X processing.
+    * `share.barcode_tag_fragments`: When processing samples from different `subpools`, it is important to set this value to `XC`. This is the default for the `shareseq` chemistry but not for 10X processing.
     * `share.preprocess_tenx.barcode_dist`: When correcting 10X barcodes, this value defines the maximum number of mismatches allowed between the barcode and the whitelist `[default = 2]`.
     * `share.preprocess_tenx.threshold_pct_barcode_matching`: Defines the fraction of barcodes passing the barcode correction step required to consider the sample high-quality `[default = 0.6]`.
         >IMPORTANT: A threshold of `0.6` might be too high for your sample and usually is the main cause of failure when processing 10x samples.
