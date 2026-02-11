@@ -43,6 +43,7 @@ COMPLEMENT = {'A': 'T',
               'C': 'G',
               'G': 'C',
               'N': 'N'}
+_TRANS_TABLE = str.maketrans("ACGTN", "TGCAN")
 
 def main(bam_file, r1_barcode_set_file, r2_barcode_file, r3_barcode_file, 
          sample_type, file_prefix):
@@ -242,7 +243,7 @@ def reverse_complement(sequence):
     """
     Return reverse complement of DNA sequence.
     """
-    return ''.join(COMPLEMENT[b] for b in sequence[::-1])
+    return sequence.translate(_TRANS_TABLE)[::-1]
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
