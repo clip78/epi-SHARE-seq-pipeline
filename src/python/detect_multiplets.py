@@ -1,6 +1,9 @@
 import time
 import itertools
 import gzip
+import subprocess
+import os
+import shutil
 import heapq
 import sys
 from collections import Counter
@@ -16,6 +19,41 @@ From https://github.com/kundajelab/ENCODE_scatac/blob/master/workflow/scripts/de
 """
 
 
+
+class FastGzReader:
+    def __init__(self, filename):
+        self.filename = filename
+        self.proc = None
+        self.f = None
+
+    def __enter__(self):
+        if not os.path.exists(self.filename):
+            raise FileNotFoundError(f"{self.filename} not found")
+
+        prog = None
+        if shutil.which('pigz'):
+            prog = 'pigz'
+        elif shutil.which('gzip'):
+            prog = 'gzip'
+
+        if prog:
+            try:
+                # Try to use pigz or gzip for faster decompression
+                self.proc = subprocess.Popen([prog, '-dc', self.filename], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                self.f = self.proc.stdout
+                return self.f
+            except OSError:
+                pass
+
+        # Fallback to python gzip
+        self.f = gzip.open(self.filename, 'rb')
+        return self.f
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.f:
+            self.f.close()
+        if self.proc:
+            self.proc.wait()
 
 def print_and_log(text, outfile, starttime=0):
     logtime = time.process_time() - starttime
@@ -79,16 +117,16 @@ def main(fragments, barcodes_strict, barcodes_expanded, summary, barcodes_status
     cur_coord = None
     i = 0
 
-    with gzip.open(fragments, 'rt') as f:
+    with FastGzReader(fragments) as f:
         for line in f:
-            line = line.rstrip('\n').split('\t')
+            line = line.rstrip(b'\n').split(b'\t')
             chr, start, end, barcode = line[:4]
 
             bid = bc_to_id.get(barcode)
             if bid is None:
                 bid = len(id_to_bc)
                 bc_to_id[barcode] = bid
-                id_to_bc.append(barcode)
+                id_to_bc.append(barcode.decode('utf-8'))
 
             this_coord = (chr, start, end)
             if this_coord != cur_coord:
