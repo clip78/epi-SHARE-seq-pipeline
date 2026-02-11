@@ -215,7 +215,9 @@ task share_rna_align {
             --clipAdapterType CellRanger4 \
 
             feature_type='Gene'
-            # TODO: add the final case in which none of the above is passed.
+        else
+            echo "Error: Unknown chemistry '~{chemistry}'"
+            exit 1
         fi
 
         # tar and gzip barcodes, features, and matrix files
@@ -267,7 +269,7 @@ task share_rna_align {
         chemistry: {
             description: 'Experiment chemistry',
             help: 'Chemistry/method used in the experiment',
-            examples: ['shareseq', '10x_v2', '10x_v3']
+            examples: ['shareseq', '10x_v2', '10x_multiome']
         }
         whitelist: {
             description: 'Barcode whitelist',
