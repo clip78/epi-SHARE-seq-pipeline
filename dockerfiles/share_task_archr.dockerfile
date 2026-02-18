@@ -7,7 +7,7 @@ FROM r-base@sha256:fff003a52d076e963396876b83cfa88c4f40a8bc27e341339cd3cc0236c1d
 
 LABEL maintainer = "Siddarth Wekhande"
 LABEL software = "Share-seq pipeline"
-LABEL software.version="1.0.0"
+LABEL software.version="1.0.2"
 LABEL software.organization="Broad Institute of MIT and Harvard"
 LABEL software.version.is-production="Yes"
 LABEL software.task="archr"
@@ -53,7 +53,7 @@ RUN R --no-echo --no-restore --no-save -e "install.packages(c('devtools','hdf5r'
 
 RUN R --no-echo --no-restore --no-save -e "BiocManager::install(c('GenomeInfoDbData','GenomicRanges','Rsamtools'), update=F, ask=F)"
 
-RUN R --no-echo --no-restore --no-save -e "devtools::install_github('GreenleafLab/ArchR@v1.0.1', repos = BiocManager::repositories());ArchR::installExtraPackages()"
+RUN R --no-echo --no-restore --no-save -e "devtools::install_github('GreenleafLab/ArchR@v1.0.2', repos = BiocManager::repositories());ArchR::installExtraPackages()"
 
 RUN R --no-echo --no-restore --no-save -e "devtools::install_github('immunogenomics/presto')"
 
